@@ -1,0 +1,18 @@
+# OS Metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Environment & Credentials (Safety Precaution)
+.env*
+*.local
+*.secret
+*.key
+*.pem
+*.log
