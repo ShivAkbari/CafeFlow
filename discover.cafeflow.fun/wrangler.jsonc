@@ -1,0 +1,45 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cafeflow-discover",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-02-04",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "routes": [
+    {
+      "pattern": "discover.cafeflow.fun",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cafeflow-db",
+      "database_id": "c852877d-9557-4607-90dd-33f1c89569b0"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET",
+      "bucket_name": "cafeflow-assets"
+    }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_PLATFORM_DOMAIN": "cafeflow.fun",
+    "NEXT_PUBLIC_APP_URL": "https://discover.cafeflow.fun",
+    "NEXT_PUBLIC_MAIN_APP_URL": "https://app.cafeflow.fun",
+    "NEXT_PUBLIC_RAZORPAY_KEY_ID": "rzp_live_Thrq6vnuNr5MEg",
+    "RAZORPAY_KEY_ID": "rzp_live_Thrq6vnuNr5MEg",
+    "R2_ACCOUNT_ID": "e1b6dfb0739cd186459c8b8c54ad68a0",
+    "R2_BUCKET_NAME": "cafeflow-assets",
+    "R2_PUBLIC_URL": "https://assets.cafeflow.fun"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
