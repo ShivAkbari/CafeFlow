@@ -38,3 +38,4 @@ Disallow: /settings
 
 Sitemap: https://discover.cafeflow.fun/sitemap.xml
 Host: https://discover.cafeflow.fun
+
