@@ -1,0 +1,15 @@
+{
+  "name": "cafeflow-workspace",
+  "private": true,
+  "scripts": {
+    "deploy:landing": "npm --prefix www.cafeflow.fun run deploy:worker",
+    "deploy:app": "npm --prefix app.cafeflow.fun run deploy:worker",
+    "deploy:app:protected": "npm --prefix app.cafeflow.fun run deploy:protected",
+    "harden:app": "npm --prefix app.cafeflow.fun run harden:artifacts",
+    "preview:app": "npm --prefix app.cafeflow.fun run deploy:preview",
+    "status:app": "npm --prefix app.cafeflow.fun run deploy:status",
+    "promote:app": "npm --prefix app.cafeflow.fun run deploy:promote",
+    "rollback:app": "npm --prefix app.cafeflow.fun run deploy:rollback",
+    "deploy:discover": "npm --prefix discover.cafeflow.fun run deploy:worker"
+  }
+}

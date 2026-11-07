@@ -19,11 +19,12 @@ export async function GET(request: NextRequest) {
 
     // 1. Fetch active cafes
     const query = `
-      SELECT id, name, slug, address, logo, currency, status, theme, custom_notice, created_at
+      SELECT id, name, slug, address, logo, currency, status, food_category, created_at
       FROM cafes
       WHERE status NOT IN ('disabled', 'deleted', 'suspended')
     `;
-    const cafes = await d1Query<any>(query, []);
+    const rawCafes = await d1Query<any>(query, []);
+    const cafes = rawCafes.filter(c => !c.id.startsWith("__"));
 
     // 2. Fetch general and presence settings for coordinates, cover photos, cuisines
     const settingsRows = await d1Query<any>(
@@ -84,14 +85,15 @@ export async function GET(request: NextRequest) {
     ];
 
     // Format cafes
+    // Format cafes with purely dynamic database calculations
     const enrichedCafes = cafes.map((cafe, idx) => {
       const extra = settingsMap.get(cafe.id) || {};
-      const cafeLat = typeof extra.cafeLat === "number" ? extra.cafeLat : 23.0225;
-      const cafeLng = typeof extra.cafeLng === "number" ? extra.cafeLng : 72.5714;
+      const cafeLat = typeof extra.cafeLat === "number" ? extra.cafeLat : null;
+      const cafeLng = typeof extra.cafeLng === "number" ? extra.cafeLng : null;
 
       let distanceKm: number | null = null;
-      if (userLat !== null && userLng !== null) {
-        const R = 6371;
+      if (userLat !== null && userLng !== null && cafeLat !== null && cafeLng !== null) {
+        const R = 6371; // Earth's radius in km
         const dLat = ((cafeLat - userLat) * Math.PI) / 180;
         const dLon = ((cafeLng - userLng) * Math.PI) / 180;
         const a =
@@ -104,42 +106,62 @@ export async function GET(request: NextRequest) {
         distanceKm = Math.round(R * c * 10) / 10;
       }
 
+      // Ratings & reviews: purely from D1 reviews table. If no reviews exist, rating is null, reviewCount is 0
       const reviewData = reviewsAggMap.get(cafe.id);
-      const rating = reviewData?.avgRating ?? 4.7;
-      const reviewCount = reviewData?.count ?? (120 + (idx * 45));
+      const rating = reviewData ? reviewData.avgRating : null;
+      const reviewCount = reviewData ? reviewData.count : 0;
 
       const offer = promoMap.get(cafe.id) || null;
       const coverImage = extra.coverImage || extra.heroImage || cafe.logo || fallbackCovers[idx % fallbackCovers.length];
 
-      const cuisines = extra.cuisines && extra.cuisines.length > 0 
+      const cuisines = Array.isArray(extra.cuisines) && extra.cuisines.length > 0 
         ? extra.cuisines 
-        : ["Cafe", "Continental", "Italian"];
+        : ["Cafe"];
+
+      // Real cafe gallery from presence or cover
+      const images: string[] = Array.isArray(extra.gallery) && extra.gallery.length > 0
+        ? Array.from(new Set([coverImage, ...extra.gallery])).slice(0, 8)
+        : [coverImage];
+
+      // Real business hours calculation
+      let isOpen = cafe.status === "active";
+      const businessHours = extra.businessHours || extra.openingHours;
+      // If cafe is paused or inactive in DB
+      if (cafe.status === "inactive" || cafe.status === "paused") {
+        isOpen = false;
+      }
+
+      // Reservation config
+      const acceptsReservations = extra.reservationsEnabled !== false;
 
       return {
         id: cafe.id,
         name: cafe.name || "Cafe",
         slug: cafe.slug,
-        address: cafe.address || extra.address || "Main Street, Ahmedabad",
+        address: cafe.address || extra.address || "",
         logo: cafe.logo || extra.logo || "",
         coverImage,
+        images,
         cuisines,
         priceRange: extra.priceRange || "₹₹",
-        priceTier: (extra.priceRange || "₹₹").length, // 1 for ₹, 2 for ₹₹, 3 for ₹₹₹
+        priceTier: (extra.priceRange || "₹₹").length,
         rating,
         reviewCount,
         currency: cafe.currency || "INR",
+        foodCategory: cafe.food_category || extra.foodCategory || "veg_non_veg",
         lat: cafeLat,
         lng: cafeLng,
         distanceKm,
         customNotice: cafe.custom_notice || null,
-        isOpen: true,
-        acceptsReservations: true,
+        isOpen,
+        businessHours: businessHours || null,
+        acceptsReservations,
         theme: cafe.theme || "classic-light",
         offer: offer ? {
           code: offer.code,
           title: offer.title,
-          discountText: offer.promo_type === "percentage" ? `${offer.value}% OFF` : `₹${offer.value} OFF`,
-          minOrder: offer.min_order_value ? `orders above ₹${offer.min_order_value}` : ""
+          discountText: offer.promo_type === "percentage" ? `${offer.value}% OFF` : `${cafe.currency || "INR"} ${offer.value} OFF`,
+          minOrder: offer.min_order_value ? `orders above ${cafe.currency || "INR"} ${offer.min_order_value}` : ""
         } : null
       };
     });
@@ -149,24 +171,27 @@ export async function GET(request: NextRequest) {
     if (q) {
       try {
         const dishRows = await d1Query<any>(
-          `SELECT id, cafe_id, name, description, price, image, is_veg 
+          `SELECT id, cafe_id, name, description, price, image, food_type, is_veg 
            FROM menu_items 
            WHERE in_stock = 1 AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ?)
-           LIMIT 8`,
+           LIMIT 12`,
           [`%${q}%`, `%${q}%`]
         );
 
         matchingDishes = dishRows.map((dish) => {
           const matchedCafe = enrichedCafes.find((c) => c.id === dish.cafe_id);
+          const resolvedFoodType = dish.food_type || (dish.is_veg ? "veg" : "non_veg");
           return {
             id: dish.id,
             name: dish.name,
             description: dish.description || "",
             price: dish.price,
-            image: dish.image || "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=400&q=80",
-            isVeg: Boolean(dish.is_veg),
+            image: dish.image || "",
+            foodType: resolvedFoodType,
+            isVeg: resolvedFoodType === "veg",
             cafeName: matchedCafe?.name || "Partner Cafe",
-            cafeSlug: matchedCafe?.slug || ""
+            cafeSlug: matchedCafe?.slug || "",
+            currency: matchedCafe?.currency || "INR"
           };
         });
       } catch (err) {
@@ -177,13 +202,11 @@ export async function GET(request: NextRequest) {
     // 6. Apply filtering
     let filtered = enrichedCafes;
     if (q) {
-      filtered = filtered.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.address.toLowerCase().includes(q) ||
-          c.slug.toLowerCase().includes(q) ||
-          c.cuisines.some((cuisine: string) => cuisine.toLowerCase().includes(q))
-      );
+      const qTokens = q.split(/\s+/).filter(Boolean);
+      filtered = filtered.filter((c) => {
+        const text = `${c.name} ${c.slug} ${c.address} ${(c.cuisines || []).join(" ")}`.toLowerCase();
+        return text.includes(q) || qTokens.some(token => text.includes(token));
+      });
     }
 
     if (category && category !== "all") {
@@ -205,12 +228,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (minRating !== null && !isNaN(minRating)) {
-      filtered = filtered.filter((c) => c.rating >= minRating);
+      filtered = filtered.filter((c) => c.rating !== null && c.rating >= minRating);
     }
 
     // 7. Sorting
     if (sort === "rating") {
-      filtered.sort((a, b) => b.rating - a.rating);
+      filtered.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     } else if (sort === "distance" && userLat !== null && userLng !== null) {
       filtered.sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999));
     } else if (sort === "price_asc") {
@@ -218,33 +241,83 @@ export async function GET(request: NextRequest) {
     } else if (sort === "price_desc") {
       filtered.sort((a, b) => b.priceTier - a.priceTier);
     } else {
-      // Relevance: if user location is available, sort by distance, else alphabetically
+      // Relevance: if user location is available, sort by distance, else keep natural order
       if (userLat !== null && userLng !== null) {
         filtered.sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999));
       }
     }
 
-    // Extract all valid offers across cafes
+    // Extract all valid offers across cafes from D1
     const allOffers = activePromotions.map((p) => {
       const matchedCafe = enrichedCafes.find((c) => c.id === p.cafe_id);
       return {
         id: p.id,
         code: p.code,
         title: p.title,
-        description: p.description || "Good food, better mood.",
+        description: p.description || "",
         promoType: p.promo_type,
         value: p.value,
         minOrder: p.min_order_value,
         maxDiscount: p.max_discount,
-        cafeName: matchedCafe?.name || "Partner Cafe",
+        cafeName: matchedCafe?.name || "",
         cafeSlug: matchedCafe?.slug || "",
-        discountText: p.promo_type === "percentage" ? `Up to ${p.value}% OFF` : `Flat ₹${p.value} OFF`
+        discountText: p.promo_type === "percentage" ? `Up to ${p.value}% OFF` : `Flat ${matchedCafe?.currency || "INR"} ${p.value} OFF`
       };
     });
+
+    // 8. Fetch real recommended items (popular items or items with active promotions from D1)
+    let dynamicRecommended: any[] = [];
+    try {
+      const popularRows = await d1Query<any>(
+        `SELECT m.id, m.cafe_id, m.name, m.price, m.image, m.food_type, m.is_veg, m.is_popular, m.tags_json, m.variants_json, m.addons_json, m.tax_rate, c.name as cafe_name, c.slug as cafe_slug, c.currency
+         FROM menu_items m
+         JOIN cafes c ON m.cafe_id = c.id
+         WHERE m.in_stock = 1 AND c.status NOT IN ('disabled', 'deleted', 'suspended')
+         ORDER BY m.is_popular DESC, m.sort_order ASC
+         LIMIT 16`
+      );
+
+      dynamicRecommended = popularRows.map((dish) => {
+        const cafeOffer = promoMap.get(dish.cafe_id);
+        const reviewData = reviewsAggMap.get(dish.cafe_id);
+        let tags: string[] = [];
+        let variants = [];
+        let addons = [];
+        try { tags = JSON.parse(dish.tags_json || "[]"); } catch {}
+        try { variants = JSON.parse(dish.variants_json || "[]"); } catch {}
+        try { addons = JSON.parse(dish.addons_json || "[]"); } catch {}
+
+        const resolvedFoodType = dish.food_type || (dish.is_veg ? "veg" : "non_veg");
+
+        return {
+          id: dish.id,
+          name: dish.name,
+          category: tags[0] || "Special",
+          price: dish.price,
+          originalPrice: null,
+          offerBadge: cafeOffer ? (cafeOffer.promo_type === "percentage" ? `${cafeOffer.value}% OFF` : `${dish.currency || "INR"} ${cafeOffer.value} OFF`) : null,
+          rating: reviewData?.avgRating ?? null,
+          isBestseller: Boolean(dish.is_popular),
+          image: dish.image || "",
+          foodType: resolvedFoodType,
+          isVeg: resolvedFoodType === "veg",
+          cafeId: dish.cafe_id,
+          cafeName: dish.cafe_name,
+          cafeSlug: dish.cafe_slug,
+          currency: dish.currency || "INR",
+          variants,
+          addons,
+          taxRate: dish.tax_rate || 0
+        };
+      });
+    } catch (e) {
+      console.warn("Could not query dynamic recommended items:", e);
+    }
 
     return NextResponse.json({ 
       cafes: filtered,
       dishes: matchingDishes,
+      recommended: dynamicRecommended,
       offers: allOffers
     });
   } catch (error: any) {

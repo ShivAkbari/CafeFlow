@@ -37,7 +37,9 @@
     "RAZORPAY_KEY_ID": "rzp_live_Thrq6vnuNr5MEg",
     "R2_ACCOUNT_ID": "e1b6dfb0739cd186459c8b8c54ad68a0",
     "R2_BUCKET_NAME": "cafeflow-assets",
-    "R2_PUBLIC_URL": "https://assets.cafeflow.fun"
+    "R2_PUBLIC_URL": "https://assets.cafeflow.fun",
+    "SHIPROCKET_API_EMAIL": "cafeflow.in@gmail.com",
+    "SHIPROCKET_ENV": "production"
   },
   "observability": {
     "enabled": true

@@ -9,6 +9,8 @@ const withPWA = withPWAInit({
 const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
+  productionBrowserSourceMaps: false,
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       {
@@ -20,6 +22,18 @@ const nextConfig = {
         hostname: "**"
       }
     ]
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/cafe/:slug/menu",
+        destination: "/cafe/:slug"
+      },
+      {
+        source: "/:slug/menu",
+        destination: "/cafe/:slug"
+      }
+    ];
   }
 };
 

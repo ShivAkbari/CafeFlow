@@ -4,15 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3001",
-    "build": "next build",
+    "build": "node scripts/sync-env.mjs && next build",
     "start": "next start -p 3001",
     "lint": "next lint",
-    "build:worker": "opennextjs-cloudflare build",
+    "build:worker": "node scripts/sync-env.mjs && opennextjs-cloudflare build --dangerouslyUseUnsupportedNextVersion",
     "preview:worker": "opennextjs-cloudflare preview",
-    "deploy:worker": "npm run build:worker && npx wrangler deploy"
+    "deploy:worker": "npm run build:worker && npx wrangler deploy",
+    "secrets:cloudflare": "npx wrangler secret bulk .secrets.cloudflare"
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "jsqr": "^1.4.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.511.0",
     "next": "^15.2.0",
     "next-pwa": "^5.6.0",
@@ -26,6 +29,7 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "^1.20.6",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^22.10.4",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19.0.2",

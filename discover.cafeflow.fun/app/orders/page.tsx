@@ -17,20 +17,27 @@ import {
   UtensilsCrossed
 } from "lucide-react";
 
+import { GoogleAuthModal, ContinueWithGoogleButton } from "@/components/google-login-modal";
+
 export default function MyOrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [searched, setSearched] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "completed">("all");
 
-  const fetchOrders = (queryPhone?: string) => {
-    setLoading(true);
+  const fetchOrders = (queryPhone?: string, isBackground = false) => {
+    if (!isBackground) setLoading(true);
     const searchVal = queryPhone !== undefined ? queryPhone : phone;
     const url = searchVal ? `/api/orders?phone=${encodeURIComponent(searchVal)}` : "/api/orders";
     
-    fetch(url)
+    fetch(url, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache, no-store, must-revalidate" }
+    })
       .then((res) => res.json())
       .then((data) => {
         setOrders(data.orders || []);
@@ -40,8 +47,52 @@ export default function MyOrdersPage() {
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    // Check if user is signed in
+    fetch("/api/user/profile")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+          if (data.user.phone) setPhone(data.user.phone);
+        }
+      })
+      .catch(() => {});
+
+    fetchOrders(undefined, false);
+
+    // Adaptive periodic polling every 3 seconds for active orders sync
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        return;
+      }
+      fetchOrders(undefined, true);
+    }, 3000);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchOrders(undefined, true);
+      }
+    };
+
+    const onFocus = () => {
+      fetchOrders(undefined, true);
+    };
+
+    if (typeof window !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibility);
+      window.addEventListener("focus", onFocus);
+      window.addEventListener("storage", onFocus);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibility);
+        window.removeEventListener("focus", onFocus);
+        window.removeEventListener("storage", onFocus);
+      }
+    };
+  }, [phone]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,46 +113,46 @@ export default function MyOrdersPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#FAF8F4] dark:bg-[#111413] text-[#191D1B] dark:text-[#F5F7F6]">
-      <main className="max-w-[430px] md:max-w-2xl mx-auto px-4 sm:px-6 pt-3 pb-24 md:pb-12 space-y-4">
+    <div className="min-h-screen bg-[#F7F5EC] dark:bg-[#001F19] text-[#0B1714] dark:text-[#F7F5EC]">
+      <main className="max-w-[430px] md:max-w-2xl mx-auto px-4 sm:px-6 pt-3 pb-28 md:pb-12 space-y-4">
         
         {/* Top App Header */}
         <header className="flex items-center justify-between pt-1">
           <button
             onClick={() => router.back()}
             aria-label="Back"
-            className="w-8 h-8 rounded-full bg-white dark:bg-[#181C1A] border border-[#E9E8E2] dark:border-[#242B27] flex items-center justify-center text-[#191D1B] dark:text-white shadow-subtle shrink-0 active:scale-95 transition-transform"
+            className="w-8 h-8 rounded-full bg-transparent flex items-center justify-center text-[#0B1714] dark:text-white shrink-0 active:scale-95 transition-transform"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5 stroke-[2.2]" />
           </button>
           <div className="text-center">
-            <h1 className="font-extrabold text-[16px] leading-tight">Your Orders</h1>
-            <p className="text-[11px] text-[#777D79]">Track live meals & order receipts</p>
+            <h1 className="font-extrabold text-[16px] leading-tight text-[#0B1714] dark:text-white">Your Orders</h1>
+            <p className="text-[11px] text-[#73716B]">Track live meals &amp; order receipts</p>
           </div>
           <button
             onClick={() => fetchOrders(phone)}
             aria-label="Refresh orders"
-            className="w-8 h-8 rounded-full bg-white dark:bg-[#181C1A] border border-[#E9E8E2] dark:border-[#242B27] flex items-center justify-center text-[#191D1B] dark:text-white shadow-subtle shrink-0 active:scale-95 transition-transform"
+            className="w-8 h-8 rounded-full bg-white dark:bg-[#002D23] border border-[#DDE3DD] dark:border-[#002D23] flex items-center justify-center text-[#0B1714] dark:text-white shadow-xs shrink-0 active:scale-95 transition-transform"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-[#064E3B] dark:text-[#34D399] ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-[#002D23] dark:text-[#34D399] ${loading ? "animate-spin" : ""}`} />
           </button>
         </header>
 
         {/* Search by Phone Lookup */}
         <form onSubmit={handleSearch} className="relative">
-          <div className="flex items-center bg-white dark:bg-[#181C1A] rounded-full border border-[#E9E8E2] dark:border-[#242B27] px-3.5 py-1.5 shadow-subtle focus-within:border-[#064E3B] transition-colors">
-            <Search className="w-4 h-4 text-[#777D79] shrink-0 mr-2" />
+          <div className="flex items-center bg-white dark:bg-[#002D23] rounded-full border border-[#DDE3DD] dark:border-[#002D23] px-3.5 py-1.5 shadow-xs focus-within:border-[#002D23] transition-colors">
+            <Search className="w-4 h-4 text-[#73716B] shrink-0 mr-2" />
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="Find by mobile number..."
-              className="w-full bg-transparent text-[12px] text-[#191D1B] dark:text-white placeholder-[#777D79] focus:outline-none"
+              className="w-full bg-transparent text-[12px] text-[#0B1714] dark:text-white placeholder-[#73716B] focus:outline-none"
             />
             {phone && (
               <button
                 type="submit"
-                className="px-3 py-1 rounded-full bg-[#064E3B] text-white text-[11px] font-bold shrink-0 hover:bg-[#043B2C] transition-colors"
+                className="px-3 py-1 rounded-full bg-[#002D23] text-white text-[11px] font-bold shrink-0 hover:bg-[#001F19] transition-colors"
               >
                 Find
               </button>
@@ -110,7 +161,7 @@ export default function MyOrdersPage() {
         </form>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
           {[
             { id: "all", label: "All Orders" },
             { id: "active", label: "Active & Cooking" },
@@ -123,8 +174,8 @@ export default function MyOrdersPage() {
                 onClick={() => setStatusFilter(tab.id as any)}
                 className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold tracking-tight transition-all shrink-0 ${
                   isSelected
-                    ? "bg-[#064E3B] text-white shadow-xs"
-                    : "bg-white dark:bg-[#181C1A] text-[#777D79] border border-[#E9E8E2] dark:border-[#242B27] hover:border-stone-300"
+                    ? "bg-[#002D23] text-white shadow-xs"
+                    : "bg-white dark:bg-[#002D23] text-[#73716B] border border-[#DDE3DD] dark:border-[#002D23] hover:border-stone-300"
                 }`}
               >
                 {tab.label}
@@ -154,8 +205,17 @@ export default function MyOrdersPage() {
             <p className="text-[12px] text-[#777D79] max-w-xs mx-auto">
               {searched
                 ? "Try searching with the phone number entered at checkout."
-                : "Explore top cafes and order fresh coffee, brunch, and artisan treats."}
+                : user
+                ? "You haven't placed any orders yet. Discover partner cafes and order fresh meals."
+                : "Sign in with Google to automatically track your active orders and dining history."}
             </p>
+
+            {!user && (
+              <div className="max-w-xs mx-auto pt-2">
+                <ContinueWithGoogleButton onClick={() => setShowAuthModal(true)} />
+              </div>
+            )}
+
             <Link
               href="/"
               className="inline-block mt-2 px-5 py-2.5 rounded-full bg-[#064E3B] text-white font-bold text-[12px] shadow-sm hover:bg-[#043B2C] transition-colors"
@@ -235,6 +295,18 @@ export default function MyOrdersPage() {
             })}
           </div>
         )}
+
+        {/* Google Authentication Modal */}
+        <GoogleAuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={(u) => {
+            setUser(u);
+            if (u.phone) setPhone(u.phone);
+            fetchOrders(u.phone);
+          }}
+        />
+
       </main>
     </div>
   );

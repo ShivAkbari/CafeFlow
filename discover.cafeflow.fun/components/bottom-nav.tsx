@@ -1,60 +1,161 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Compass, Tag, Calendar, Heart, User } from "lucide-react";
+import { Compass, Search, ShoppingBag, User, QrCode } from "lucide-react";
+import { QRScannerModal } from "@/components/qr-scanner-modal";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [showScanner, setShowScanner] = useState(false);
 
-  const navItems = [
-    { label: "Explore", href: "/", icon: Compass },
-    { label: "Offers", href: "/#offers", icon: Tag },
-    { label: "Bookings", href: "/reservations", icon: Calendar },
-    { label: "Saved", href: "/profile#saved", icon: Heart },
-    { label: "Profile", href: "/profile", icon: User }
-  ];
+  // Hide BottomNav on pages that have their own fixed action bar (cart checkout, cafe menu/order bar, and order details)
+  const isMarketplaceMainPage = pathname === "/" || pathname === "/search" || pathname === "/orders" || pathname === "/profile" || pathname === "/wallet";
+  if (!isMarketplaceMainPage) {
+    return null;
+  }
 
   return (
-    <nav
-      aria-label="Mobile Navigation"
-      className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#FAF8F4]/95 dark:bg-[#181C1A]/95 backdrop-blur-md border-t border-[#E9E8E2] dark:border-[#242B27] px-4 py-1.5 safe-area-pb"
-    >
-      <div className="flex items-center justify-around h-13 max-w-md mx-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = pathname === item.href || (item.href === "/" && pathname === "/");
-          return (
+    <>
+      <div className="fixed bottom-3 left-4 right-4 z-50 md:hidden pointer-events-none safe-area-pb">
+        <nav
+          aria-label="Mobile Navigation"
+          className="pointer-events-auto bg-[#FFFEFA]/95 dark:bg-[#001F19]/95 backdrop-blur-md rounded-2xl border border-[#DDE3DD] dark:border-white/10 px-2 py-1 shadow-[0_4px_24px_rgba(0,31,25,0.12)] max-w-[390px] mx-auto"
+        >
+          <div className="flex items-center justify-around h-14 relative">
+            {/* 1. Home */}
             <Link
-              key={item.label}
-              href={item.href}
+              href="/"
               className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors ${
-                isActive
-                  ? "text-[#064E3B] dark:text-[#34D399]"
-                  : "text-[#777D79] hover:text-[#191D1B] dark:text-stone-400 dark:hover:text-stone-200"
+                pathname === "/"
+                  ? "text-[#002D23] dark:text-[#B99A5B]"
+                  : "text-[#64736D] hover:text-[#0B1714] dark:text-[#8F9E98] dark:hover:text-[#F7F5EC]"
               }`}
             >
-              <div className="relative flex items-center justify-center">
-                {isActive && (
-                  <span className="absolute -inset-1.5 rounded-full bg-[#EAF3EC] dark:bg-[#064E3B]/30 scale-100" />
+              <div className="relative flex items-center justify-center w-7 h-7 rounded-full">
+                {pathname === "/" && (
+                  <span className="absolute inset-0 rounded-full bg-[#E8F0EB] dark:bg-[#00281F] scale-100 transition-transform" />
                 )}
-                <Icon
-                  className={`w-[20px] h-[20px] ${
-                    isActive ? "stroke-[2.3]" : "stroke-[1.8]"
+                <Compass
+                  className={`w-[18px] h-[18px] relative z-10 transition-transform ${
+                    pathname === "/" ? "stroke-[2.2] scale-105" : "stroke-[1.8]"
                   }`}
                 />
               </div>
               <span
-                className={`text-[10px] tracking-tight mt-1 ${
-                  isActive ? "font-bold text-[#064E3B] dark:text-[#34D399]" : "font-medium"
+                className={`text-[10px] tracking-tight mt-0.5 transition-colors ${
+                  pathname === "/" ? "font-bold text-[#002D23] dark:text-[#B99A5B]" : "font-medium"
                 }`}
               >
-                {item.label}
+                Home
               </span>
             </Link>
-          );
-        })}
+
+            {/* 2. Search */}
+            <Link
+              href="/search"
+              className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors ${
+                pathname === "/search"
+                  ? "text-[#002D23] dark:text-[#B99A5B]"
+                  : "text-[#64736D] hover:text-[#0B1714] dark:text-[#8F9E98] dark:hover:text-[#F7F5EC]"
+              }`}
+            >
+              <div className="relative flex items-center justify-center w-7 h-7 rounded-full">
+                {pathname === "/search" && (
+                  <span className="absolute inset-0 rounded-full bg-[#E8F0EB] dark:bg-[#00281F] scale-100 transition-transform" />
+                )}
+                <Search
+                  className={`w-[18px] h-[18px] relative z-10 transition-transform ${
+                    pathname === "/search" ? "stroke-[2.2] scale-105" : "stroke-[1.8]"
+                  }`}
+                />
+              </div>
+              <span
+                className={`text-[10px] tracking-tight mt-0.5 transition-colors ${
+                  pathname === "/search" ? "font-bold text-[#002D23] dark:text-[#B99A5B]" : "font-medium"
+                }`}
+              >
+                Search
+              </span>
+            </Link>
+
+            {/* 3. CENTER HIGHLIGHTED SCAN QR BUTTON */}
+            <div className="flex flex-col items-center justify-center flex-1 relative">
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="group relative flex items-center justify-center w-12 h-12 rounded-full bg-[#002D23] text-[#FFFEFA] shadow-md ring-4 ring-[#F7F5EC] dark:ring-[#001F19] -translate-y-3.5 hover:-translate-y-4 active:scale-95 transition-all cursor-pointer"
+                aria-label="Scan Table QR Code"
+              >
+                <QrCode className="w-5 h-5 transition-transform group-hover:rotate-6 stroke-[2.2]" />
+              </button>
+              <span className="text-[10px] tracking-tight font-extrabold text-[#002D23] dark:text-[#B99A5B] -mt-2.5">
+                Scan QR
+              </span>
+            </div>
+
+            {/* 4. Orders */}
+            <Link
+              href="/orders"
+              className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors ${
+                pathname === "/orders"
+                  ? "text-[#002D23] dark:text-[#B99A5B]"
+                  : "text-[#64736D] hover:text-[#0B1714] dark:text-[#8F9E98] dark:hover:text-[#F7F5EC]"
+              }`}
+            >
+              <div className="relative flex items-center justify-center w-7 h-7 rounded-full">
+                {pathname === "/orders" && (
+                  <span className="absolute inset-0 rounded-full bg-[#E8F0EB] dark:bg-[#00281F] scale-100 transition-transform" />
+                )}
+                <ShoppingBag
+                  className={`w-[18px] h-[18px] relative z-10 transition-transform ${
+                    pathname === "/orders" ? "stroke-[2.2] scale-105" : "stroke-[1.8]"
+                  }`}
+                />
+              </div>
+              <span
+                className={`text-[10px] tracking-tight mt-0.5 transition-colors ${
+                  pathname === "/orders" ? "font-bold text-[#002D23] dark:text-[#B99A5B]" : "font-medium"
+                }`}
+              >
+                Orders
+              </span>
+            </Link>
+
+            {/* 5. Account */}
+            <Link
+              href="/profile"
+              className={`flex flex-col items-center justify-center flex-1 py-1 relative transition-colors ${
+                pathname === "/profile"
+                  ? "text-[#002D23] dark:text-[#B99A5B]"
+                  : "text-[#64736D] hover:text-[#0B1714] dark:text-[#8F9E98] dark:hover:text-[#F7F5EC]"
+              }`}
+            >
+              <div className="relative flex items-center justify-center w-7 h-7 rounded-full">
+                {pathname === "/profile" && (
+                  <span className="absolute inset-0 rounded-full bg-[#E8F0EB] dark:bg-[#00281F] scale-100 transition-transform" />
+                )}
+                <User
+                  className={`w-[18px] h-[18px] relative z-10 transition-transform ${
+                    pathname === "/profile" ? "stroke-[2.2] scale-105" : "stroke-[1.8]"
+                  }`}
+                />
+              </div>
+              <span
+                className={`text-[10px] tracking-tight mt-0.5 transition-colors ${
+                  pathname === "/profile" ? "font-bold text-[#002D23] dark:text-[#B99A5B]" : "font-medium"
+                }`}
+              >
+                Account
+              </span>
+            </Link>
+          </div>
+        </nav>
       </div>
-    </nav>
+
+      {/* Camera QR Scanner Modal */}
+      <QRScannerModal isOpen={showScanner} onClose={() => setShowScanner(false)} />
+    </>
   );
 }

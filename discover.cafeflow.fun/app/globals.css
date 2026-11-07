@@ -3,19 +3,47 @@
 @tailwind utilities;
 
 :root {
-  --background: #FAF8F4;
-  --foreground: #191D1B;
-  --primary: #064E3B;
-  --card: #FFFFFF;
-  --card-border: #E9E8E2;
+  /* Official Brandbook Starter Tokens */
+  --color-brand: #002D23;
+  --color-brand-deep: #001F19;
+  --color-accent: #B99A5B;
+  --color-background: #F7F5EC;
+  --color-surface: #FFFEFA;
+  --color-text: #0B1714;
+  --color-text-muted: #64736D;
+  --color-border: #DDE3DD;
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --space-unit: 4px;
+
+  --background: #F7F5EC;
+  --foreground: #0B1714;
+  --primary: #002D23;
+  --primary-deep: #001F19;
+  --soft-sage: #E8F0EB;
+  --card: #FFFEFA;
+  --card-border: #DDE3DD;
+  --secondary: #64736D;
 }
 
 .dark {
-  --background: #111413;
-  --foreground: #F5F7F6;
-  --primary: #10B981;
-  --card: #181C1A;
-  --card-border: #242B27;
+  --color-brand: #002D23;
+  --color-brand-deep: #001F19;
+  --color-accent: #B99A5B;
+  --color-background: #001F19;
+  --color-surface: #002D23;
+  --color-text: #F7F5EC;
+  --color-text-muted: #8F9E98;
+  --color-border: rgba(221, 227, 221, 0.15);
+
+  --background: #001F19;
+  --foreground: #F7F5EC;
+  --primary: #B99A5B;
+  --primary-deep: #001712;
+  --soft-sage: #00281F;
+  --card: #002D23;
+  --card-border: rgba(221, 227, 221, 0.15);
+  --secondary: #8F9E98;
 }
 
 body {
@@ -51,5 +79,29 @@ body {
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .safe-area-pb {
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

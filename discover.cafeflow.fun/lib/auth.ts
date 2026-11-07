@@ -11,6 +11,14 @@ export interface DiscoverUser {
 
 export const DISCOVER_SESSION_COOKIE = "cafeflow_discover_session";
 
+export async function hashSessionToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /**
  * Verify user from session token or authorization header
  */
@@ -31,11 +39,7 @@ export async function getSessionUser(request: NextRequest): Promise<DiscoverUser
 
   try {
     // 1. Hash token to check sessions table
-    const encoder = new TextEncoder();
-    const data = encoder.encode(token);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const tokenHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    const tokenHash = await hashSessionToken(token);
 
     const now = Math.floor(Date.now() / 1000);
     const session = await d1QueryOne<{ user_id: string }>(
