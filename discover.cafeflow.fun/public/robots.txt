@@ -1,0 +1,40 @@
+# robots.txt for CafeFlow Discover (https://discover.cafeflow.fun)
+
+User-agent: *
+Content-Signal: ai-train=no, search=yes, ai-input=yes
+Allow: /
+Allow: /cafe/
+Allow: /search
+Allow: /reservations
+Disallow: /api/
+Disallow: /cart
+Disallow: /orders/
+Disallow: /profile
+Disallow: /wallet
+Disallow: /settings
+
+# Explicit Search Engine & AI Discovery Crawlers
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Applebot
+User-agent: DuckDuckBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: GPTBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: ClaudeBot
+User-agent: PerplexityBot
+Allow: /
+Allow: /cafe/
+Allow: /search
+Allow: /reservations
+Disallow: /api/
+Disallow: /cart
+Disallow: /orders/
+Disallow: /profile
+Disallow: /wallet
+Disallow: /settings
+
+Sitemap: https://discover.cafeflow.fun/sitemap.xml
+Host: https://discover.cafeflow.fun

@@ -34,6 +34,19 @@ const nextConfig = {
         destination: "/cafe/:slug"
       }
     ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Content-Signal",
+            value: "ai-train=no, search=yes, ai-input=yes"
+          }
+        ]
+      }
+    ];
   }
 };
 
